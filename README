@@ -1,0 +1,14 @@
+twemproxy_exporter
+==================
+
+Exporter for twemproxy: https://github.com/twitter/twemproxy
+
+Usage of twemproxy_exporter:
+  -twemproxy.stats-address string
+        Stats address of twemproxy. (default "localhost:22222")
+  -twemproxy.timeout duration
+        Timeout for request to twemproxy. (default 2s)
+  -web.listen-address string
+        Address to listen on for web interface and telemetry. (default ":9151")
+  -web.telemetry-path string
+        Path under which to expose metrics. (default "/metrics")
