@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
 )
 
 const (
@@ -25,7 +26,7 @@ func main() {
 	)
 	flag.Parse()
 
-	log.Printf("listening on port %s path %s", *listenAddress, *metricsPath)
+	log.Infof("listening on port %s path %s", *listenAddress, *metricsPath)
 
 	u, err := url.Parse(*twemproxyAddress)
 	if err != nil {
@@ -34,7 +35,15 @@ func main() {
 	if *timeout == 0 {
 		*timeout = 2 * time.Second
 	}
-	newExporter(u, *timeout)
+
+	prometheus.MustRegister(newExporter(u, *timeout))
+
+	http.Handle(*metricsPath, prometheus.Handler())
+
+	log.Infoln("starting twemproxy_exporter", version.Info())
+	log.Infoln("build context", version.BuildContext())
+	log.Infoln("listening on", *listenAddress)
+	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
 
 type exporter struct {
@@ -82,7 +91,7 @@ func newExporter(endpoint *url.URL, timeout time.Duration) *exporter {
 			nil,
 		),
 		totalConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "total_connections"),
+			prometheus.BuildFQName(namespace, "", "connections_total"),
 			"Total number of connections.",
 			nil,
 			nil,
@@ -112,19 +121,19 @@ func newExporter(endpoint *url.URL, timeout time.Duration) *exporter {
 			nil,
 		),
 		backendServerEjections: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "backend_server_ejections"),
+			prometheus.BuildFQName(namespace, "", "backend_server_ejections_total"),
 			"The number of times a backend has been ejected.",
 			nil,
 			nil,
 		),
 		forwardErrors: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "forward_errors"),
+			prometheus.BuildFQName(namespace, "", "forward_errors_total"),
 			"Total number of forward errors.",
 			nil,
 			nil,
 		),
 		fragments: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "forward_errors"),
+			prometheus.BuildFQName(namespace, "", "fragments_total"),
 			"Total number fragments created from multi-vector requests.",
 			nil,
 			nil,
@@ -219,7 +228,7 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	}()
 	_, err := e.collect()
 	if err != nil {
-		log.Printf("failed to collect stats: %v", err)
+		log.Infof("failed to collect stats: %v", err)
 		return
 	}
 
@@ -231,14 +240,14 @@ func (e *exporter) collect() (*stats, error) {
 	defer cancel()
 	req, err := http.NewRequest("GET", e.endpoint.String(), nil)
 	if err != nil {
-		log.Printf("failed to create request: %v", err)
+		log.Errorf("failed to create request: %v", err)
 		return nil, err
 	}
 
 	req = req.WithContext(ctx)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("failed to send request: %v", err)
+		log.Errorf("failed to send request: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -248,7 +257,7 @@ func (e *exporter) collect() (*stats, error) {
 	// return nil, nil
 	s := new(stats)
 	if err := json.NewDecoder(resp.Body).Decode(s); err != nil {
-		log.Printf("failed to unmarshal response: %v", err)
+		log.Errorf("failed to unmarshal response: %v", err)
 		return nil, err
 	}
 
