@@ -227,13 +227,40 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	defer func() {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, up)
 	}()
-	_, err := e.collect()
+	st, err := e.collect()
 	if err != nil {
 		log.Infof("failed to collect stats: %v", err)
 		return
 	}
 
 	up = 1
+
+	ch <- prometheus.MustNewConstMetric(e.totalConnections, prometheus.CounterValue, st.TotalConnections)
+	ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, st.CurrConnections)
+
+	p := st.Proxied
+	ch <- prometheus.MustNewConstMetric(e.clientEOF, prometheus.CounterValue, p.ClientEOF)
+	ch <- prometheus.MustNewConstMetric(e.clientErr, prometheus.CounterValue, p.ClientErr)
+	ch <- prometheus.MustNewConstMetric(e.activeClientConnections, prometheus.GaugeValue, p.ClientConnections)
+	ch <- prometheus.MustNewConstMetric(e.backendServerEjections, prometheus.CounterValue, p.ClientConnections)
+	ch <- prometheus.MustNewConstMetric(e.forwardErrors, prometheus.CounterValue, p.ForwardError)
+	ch <- prometheus.MustNewConstMetric(e.fragments, prometheus.CounterValue, p.Fragments)
+
+	for name, server := range p.Servers {
+		ch <- prometheus.MustNewConstMetric(e.serverEOF, prometheus.CounterValue, server.ServerEOF, name)
+		ch <- prometheus.MustNewConstMetric(e.serverErr, prometheus.CounterValue, server.ServerErr, name)
+		ch <- prometheus.MustNewConstMetric(e.serverTimeouts, prometheus.CounterValue, server.ServerTimedout, name)
+		ch <- prometheus.MustNewConstMetric(e.activeServerConnections, prometheus.GaugeValue, server.ServerConnections, name)
+		ch <- prometheus.MustNewConstMetric(e.serverEjectedAt, prometheus.GaugeValue, server.ServerEjectedAt, name)
+		ch <- prometheus.MustNewConstMetric(e.requestCount, prometheus.CounterValue, server.Requests, name)
+		ch <- prometheus.MustNewConstMetric(e.requestBytes, prometheus.CounterValue, server.RequestBytes, name)
+		ch <- prometheus.MustNewConstMetric(e.responseCount, prometheus.CounterValue, server.Responses, name)
+		ch <- prometheus.MustNewConstMetric(e.responseBytes, prometheus.CounterValue, server.ResponseBytes, name)
+		ch <- prometheus.MustNewConstMetric(e.incomingQueueGauge, prometheus.GaugeValue, server.InQueue, name)
+		ch <- prometheus.MustNewConstMetric(e.incomingQueueBytesGauge, prometheus.GaugeValue, server.InQueueBytes, name)
+		ch <- prometheus.MustNewConstMetric(e.outgoingQueueGauge, prometheus.GaugeValue, server.OutQueue, name)
+		ch <- prometheus.MustNewConstMetric(e.outgoingQueueBytesGauge, prometheus.GaugeValue, server.OutQueueBytes, name)
+	}
 }
 
 func (e *exporter) collect() (*stats, error) {
