@@ -26,8 +26,6 @@ func main() {
 	)
 	flag.Parse()
 
-	log.Infof("listening on port %s path %s", *listenAddress, *metricsPath)
-
 	if *twemproxyAddress == "" {
 		log.Fatalln("-twemproxy.stats-address must not be blank")
 	}
