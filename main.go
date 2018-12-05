@@ -1,9 +1,10 @@
 package main
 
 import (
-	"context"
+	"bufio"
 	"encoding/json"
 	"flag"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -236,32 +237,24 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *exporter) collect() (*stats, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-	defer cancel()
-	req, err := http.NewRequest("GET", e.endpoint.String(), nil)
+	// TODO: Reuse connection, connect with net.DialTCP?
+	conn, err := net.DialTimeout("tcp", e.endpoint.String(), e.timeout)
 	if err != nil {
-		log.Errorf("failed to create request: %v", err)
+		log.Errorf("failed to dial endpoint: %v", err)
 		return nil, err
 	}
+	conn.SetReadDeadline(time.Now().Add(e.timeout))
+	defer conn.Close()
 
-	req = req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Errorf("failed to send request: %v", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
+	r := bufio.NewReader(conn)
 
-	// fmt.Println("printing body")
-	// io.Copy(os.Stdout, resp.Body)
-	// return nil, nil
-	s := new(stats)
-	if err := json.NewDecoder(resp.Body).Decode(s); err != nil {
+	st := new(stats)
+	if err := json.NewDecoder(r).Decode(st); err != nil {
 		log.Errorf("failed to unmarshal response: %v", err)
 		return nil, err
 	}
 
-	return s, nil
+	return st, nil
 }
 
 // Describe implements prometheus.Collector. It sends all Descriptors possible
