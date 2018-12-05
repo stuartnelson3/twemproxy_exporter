@@ -37,6 +37,15 @@ func main() {
 	prometheus.MustRegister(newExporter(*twemproxyAddress, *timeout))
 
 	http.Handle(*metricsPath, prometheus.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+		<head><title>Twemproxy Exporter</title></head>
+		<body>
+		<h1>Twemproxy Exporter</h1>
+		<p><a href="` + *metricsPath + `">Metrics</a></p>
+		</body>
+		</html>`))
+	})
 
 	log.Infoln("starting twemproxy_exporter", version.Info())
 	log.Infoln("build context", version.BuildContext())
