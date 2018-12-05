@@ -348,17 +348,17 @@ func (p *Proxied) UnmarshalJSON(b []byte) error {
 	delete(dat, "forward_error")
 	p.Fragments = dat["fragments"].(float64)
 	delete(dat, "fragments")
-	p.Servers = make(map[string]*server, len(dat))
 
-	for serverName, serverData := range dat {
-		s := new(server)
-		d, err := json.Marshal(serverData.(map[string]interface{}))
-		if err != nil {
-			return err
-		}
-		json.Unmarshal(d, s)
-		p.Servers[serverName] = s
+	servers := make(map[string]*server, len(dat))
+	d, err := json.Marshal(dat)
+	if err != nil {
+		return err
 	}
+	err = json.Unmarshal(d, &servers)
+	if err != nil {
+		return err
+	}
+	p.Servers = servers
 
 	return nil
 }
