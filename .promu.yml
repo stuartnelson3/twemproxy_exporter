@@ -1,6 +1,8 @@
 repository:
   path: github.com/stuartnelson3/twemproxy_exporter
 build:
+  binaries:
+    - name: twemproxy_exporter
   flags: -a -tags -installsuffix
   ldflags: |
     -s
