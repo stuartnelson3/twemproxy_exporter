@@ -12,3 +12,10 @@ Usage of twemproxy_exporter:
         Address to listen on for web interface and telemetry. (default ":9151")
   -web.telemetry-path string
         Path under which to expose metrics. (default "/metrics")
+
+Todo:
+
+  - twemproxy only updates its stats every X seconds. Maybe it would make sense
+    to do the same here.
+  - The JSON parsing is kind of involved. Write a benchmark and find a way to
+    improve it (both performance- and codewise)
