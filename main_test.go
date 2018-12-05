@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -14,22 +11,26 @@ import (
 )
 
 func TestUnmarshal(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	l, err := net.Listen("tcp", "0.0.0.0:")
+	if err != nil {
+		t.Fatalf("failed to create tcp listener: %v", err)
+	}
+	defer l.Close()
+
+	go func() {
+		conn, err := l.Accept()
+		require.NoError(t, err)
+		defer conn.Close()
+
 		f, err := os.Open("testdata/example.json")
-		if err != nil {
-			http.Error(w, fmt.Sprintf("failed to open example.json: %v", err), http.StatusInternalServerError)
-			return
-		}
+		require.NoError(t, err)
 		defer f.Close()
 
-		if _, err := io.Copy(w, f); err != nil {
-			t.Fatalf("failed to write to conn: %v", err)
-		}
-	}))
-	defer ts.Close()
+		_, err = io.Copy(conn, f)
+		require.NoError(t, err)
+	}()
 
-	u, _ := url.Parse(ts.URL)
-	e := newExporter(u, time.Second)
+	e := newExporter(l.Addr().String(), time.Second)
 
 	st, err := e.collect()
 	require.NoError(t, err)

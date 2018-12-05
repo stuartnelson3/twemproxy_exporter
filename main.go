@@ -6,7 +6,6 @@ import (
 	"flag"
 	"net"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,15 +28,15 @@ func main() {
 
 	log.Infof("listening on port %s path %s", *listenAddress, *metricsPath)
 
-	u, err := url.Parse(*twemproxyAddress)
-	if err != nil {
-		log.Fatalf("failed to parse twemproxy.stats-address: %v", err)
+	if *twemproxyAddress == "" {
+		log.Fatalln("-twemproxy.stats-address must not be blank")
 	}
+
 	if *timeout == 0 {
 		*timeout = 2 * time.Second
 	}
 
-	prometheus.MustRegister(newExporter(u, *timeout))
+	prometheus.MustRegister(newExporter(*twemproxyAddress, *timeout))
 
 	http.Handle(*metricsPath, prometheus.Handler())
 
@@ -48,7 +47,7 @@ func main() {
 }
 
 type exporter struct {
-	endpoint *url.URL
+	endpoint string
 	timeout  time.Duration
 
 	up                 *prometheus.Desc
@@ -81,7 +80,7 @@ type exporter struct {
 	outgoingQueueBytesGauge *prometheus.Desc // Double check this is a gauge, it sounds like one..
 }
 
-func newExporter(endpoint *url.URL, timeout time.Duration) *exporter {
+func newExporter(endpoint string, timeout time.Duration) *exporter {
 	return &exporter{
 		endpoint: endpoint,
 		timeout:  timeout,
@@ -265,7 +264,7 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 
 func (e *exporter) collect() (*stats, error) {
 	// TODO: Reuse connection, connect with net.DialTCP?
-	conn, err := net.DialTimeout("tcp", e.endpoint.String(), e.timeout)
+	conn, err := net.DialTimeout("tcp", e.endpoint, e.timeout)
 	if err != nil {
 		log.Errorf("failed to dial endpoint: %v", err)
 		return nil, err
