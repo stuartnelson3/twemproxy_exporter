@@ -22,7 +22,7 @@ func TestUnmarshal(t *testing.T) {
 		require.NoError(t, err)
 		defer conn.Close()
 
-		f, err := os.Open("testdata/example.json")
+		f, err := os.Open("testdata/simple.json")
 		require.NoError(t, err)
 		defer f.Close()
 
