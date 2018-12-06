@@ -100,127 +100,127 @@ func newExporter(endpoint string, timeout time.Duration) *exporter {
 		totalConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections_total"),
 			"Total number of connections.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		currentConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_connections"),
 			"The current number of connections.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		clientEOF: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "client_eof_total"),
 			"Total number of client EOFs.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		clientErr: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "client_err_total"),
 			"Total number of client errors.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		activeClientConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "active_client_connections"),
 			"The current number of active client connections.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		backendServerEjections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "backend_server_ejections_total"),
 			"The number of times a backend has been ejected.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		forwardErrors: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "forward_errors_total"),
 			"Total number of forward errors.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		fragments: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "fragments_total"),
 			"Total number fragments created from multi-vector requests.",
-			nil,
+			[]string{"pool"},
 			nil,
 		),
 		serverEOF: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_eof_total"),
 			"Total number of server EOFs.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		serverErr: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_err_total"),
 			"Total number of server errors.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		serverTimeouts: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_timeouts_total"),
 			"Total number of times the server has timed out.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		activeServerConnections: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_connections_active"),
 			"The current number of active server connections.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		serverEjectedAt: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_ejected_at"),
 			"The time when the server was ejected in UNIX time.", // Confirm ms/sec?
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		requestCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_requests_total"),
 			"Total number of requests to the server.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		requestBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_requests_bytes_total"),
 			"Total number of requests bytes sent to the server.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		responseCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_responses_total"),
 			"Total number of responses to the server.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		responseBytes: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_responses_bytes_total"),
 			"Total number of response bytes sent to the server.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		incomingQueueGauge: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "incoming_queue"),
 			"The current number of requests in the incoming queue.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		incomingQueueBytesGauge: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "incoming_queue_bytes"),
 			"The current number of bytes in the incoming queue.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		outgoingQueueGauge: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "outgoing_queue"),
 			"The current number of requests in the outgoing queue.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 		outgoingQueueBytesGauge: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "outgoing_queue_bytes"),
 			"The current number of bytes in the outgoing queue.",
-			[]string{"server"},
+			[]string{"pool", "server"},
 			nil,
 		),
 	}
@@ -244,28 +244,29 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.totalConnections, prometheus.CounterValue, st.TotalConnections)
 	ch <- prometheus.MustNewConstMetric(e.currentConnections, prometheus.GaugeValue, st.CurrConnections)
 
-	p := st.Proxied
-	ch <- prometheus.MustNewConstMetric(e.clientEOF, prometheus.CounterValue, p.ClientEOF)
-	ch <- prometheus.MustNewConstMetric(e.clientErr, prometheus.CounterValue, p.ClientErr)
-	ch <- prometheus.MustNewConstMetric(e.activeClientConnections, prometheus.GaugeValue, p.ClientConnections)
-	ch <- prometheus.MustNewConstMetric(e.backendServerEjections, prometheus.CounterValue, p.ClientConnections)
-	ch <- prometheus.MustNewConstMetric(e.forwardErrors, prometheus.CounterValue, p.ForwardError)
-	ch <- prometheus.MustNewConstMetric(e.fragments, prometheus.CounterValue, p.Fragments)
+	for poolName, pool := range st.Pools {
+		ch <- prometheus.MustNewConstMetric(e.clientEOF, prometheus.CounterValue, pool.ClientEOF, poolName)
+		ch <- prometheus.MustNewConstMetric(e.clientErr, prometheus.CounterValue, pool.ClientErr, poolName)
+		ch <- prometheus.MustNewConstMetric(e.activeClientConnections, prometheus.GaugeValue, pool.ClientConnections, poolName)
+		ch <- prometheus.MustNewConstMetric(e.backendServerEjections, prometheus.CounterValue, pool.ClientConnections, poolName)
+		ch <- prometheus.MustNewConstMetric(e.forwardErrors, prometheus.CounterValue, pool.ForwardError, poolName)
+		ch <- prometheus.MustNewConstMetric(e.fragments, prometheus.CounterValue, pool.Fragments, poolName)
 
-	for name, server := range p.Servers {
-		ch <- prometheus.MustNewConstMetric(e.serverEOF, prometheus.CounterValue, server.ServerEOF, name)
-		ch <- prometheus.MustNewConstMetric(e.serverErr, prometheus.CounterValue, server.ServerErr, name)
-		ch <- prometheus.MustNewConstMetric(e.serverTimeouts, prometheus.CounterValue, server.ServerTimedout, name)
-		ch <- prometheus.MustNewConstMetric(e.activeServerConnections, prometheus.GaugeValue, server.ServerConnections, name)
-		ch <- prometheus.MustNewConstMetric(e.serverEjectedAt, prometheus.GaugeValue, server.ServerEjectedAt, name)
-		ch <- prometheus.MustNewConstMetric(e.requestCount, prometheus.CounterValue, server.Requests, name)
-		ch <- prometheus.MustNewConstMetric(e.requestBytes, prometheus.CounterValue, server.RequestBytes, name)
-		ch <- prometheus.MustNewConstMetric(e.responseCount, prometheus.CounterValue, server.Responses, name)
-		ch <- prometheus.MustNewConstMetric(e.responseBytes, prometheus.CounterValue, server.ResponseBytes, name)
-		ch <- prometheus.MustNewConstMetric(e.incomingQueueGauge, prometheus.GaugeValue, server.InQueue, name)
-		ch <- prometheus.MustNewConstMetric(e.incomingQueueBytesGauge, prometheus.GaugeValue, server.InQueueBytes, name)
-		ch <- prometheus.MustNewConstMetric(e.outgoingQueueGauge, prometheus.GaugeValue, server.OutQueue, name)
-		ch <- prometheus.MustNewConstMetric(e.outgoingQueueBytesGauge, prometheus.GaugeValue, server.OutQueueBytes, name)
+		for serverName, server := range pool.Servers {
+			ch <- prometheus.MustNewConstMetric(e.serverEOF, prometheus.CounterValue, server.ServerEOF, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.serverErr, prometheus.CounterValue, server.ServerErr, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.serverTimeouts, prometheus.CounterValue, server.ServerTimedout, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.activeServerConnections, prometheus.GaugeValue, server.ServerConnections, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.serverEjectedAt, prometheus.GaugeValue, server.ServerEjectedAt, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.requestCount, prometheus.CounterValue, server.Requests, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.requestBytes, prometheus.CounterValue, server.RequestBytes, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.responseCount, prometheus.CounterValue, server.Responses, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.responseBytes, prometheus.CounterValue, server.ResponseBytes, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.incomingQueueGauge, prometheus.GaugeValue, server.InQueue, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.incomingQueueBytesGauge, prometheus.GaugeValue, server.InQueueBytes, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.outgoingQueueGauge, prometheus.GaugeValue, server.OutQueue, poolName, serverName)
+			ch <- prometheus.MustNewConstMetric(e.outgoingQueueBytesGauge, prometheus.GaugeValue, server.OutQueueBytes, poolName, serverName)
+		}
 	}
 }
 
@@ -325,10 +326,44 @@ type stats struct {
 	Timestamp        float64 `json:"timestamp"`
 	TotalConnections float64 `json:"total_connections"`
 	CurrConnections  float64 `json:"curr_connections"`
-	Proxied          Proxied `json:"proxied"`
+	Pools            map[string]*pool
 }
 
-type Proxied struct {
+func (s *stats) UnmarshalJSON(b []byte) error {
+	var dat map[string]interface{}
+	if err := json.Unmarshal(b, &dat); err != nil {
+		return err
+	}
+	s.Service = dat["service"].(string)
+	delete(dat, "service")
+	s.Source = dat["source"].(string)
+	delete(dat, "source")
+	s.Version = dat["version"].(string)
+	delete(dat, "version")
+	s.Uptime = dat["uptime"].(float64)
+	delete(dat, "uptime")
+	s.Timestamp = dat["timestamp"].(float64)
+	delete(dat, "timestamp")
+	s.TotalConnections = dat["total_connections"].(float64)
+	delete(dat, "total_connections")
+	s.CurrConnections = dat["curr_connections"].(float64)
+	delete(dat, "curr_connections")
+
+	pools := make(map[string]*pool, len(dat))
+	d, err := json.Marshal(dat)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(d, &pools)
+	if err != nil {
+		return err
+	}
+	s.Pools = pools
+
+	return nil
+}
+
+type pool struct {
 	ClientEOF         float64 `json:"client_eof"`
 	ClientErr         float64 `json:"client_err"`
 	ClientConnections float64 `json:"client_connections"`
@@ -338,7 +373,7 @@ type Proxied struct {
 	Servers           map[string]*server
 }
 
-func (p *Proxied) UnmarshalJSON(b []byte) error {
+func (p *pool) UnmarshalJSON(b []byte) error {
 	var dat map[string]interface{}
 	if err := json.Unmarshal(b, &dat); err != nil {
 		return err
