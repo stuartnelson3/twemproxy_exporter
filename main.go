@@ -122,7 +122,7 @@ func newExporter(endpoint string, timeout time.Duration) *exporter {
 			nil,
 		),
 		activeClientConnections: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "active_client_connections"),
+			prometheus.BuildFQName(namespace, "", "client_connections_active"),
 			"The current number of active client connections.",
 			[]string{"pool"},
 			nil,
