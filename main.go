@@ -248,7 +248,7 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(e.clientEOF, prometheus.CounterValue, pool.ClientEOF, poolName)
 		ch <- prometheus.MustNewConstMetric(e.clientErr, prometheus.CounterValue, pool.ClientErr, poolName)
 		ch <- prometheus.MustNewConstMetric(e.activeClientConnections, prometheus.GaugeValue, pool.ClientConnections, poolName)
-		ch <- prometheus.MustNewConstMetric(e.backendServerEjections, prometheus.CounterValue, pool.ClientConnections, poolName)
+		ch <- prometheus.MustNewConstMetric(e.backendServerEjections, prometheus.CounterValue, pool.ServerEjects, poolName)
 		ch <- prometheus.MustNewConstMetric(e.forwardErrors, prometheus.CounterValue, pool.ForwardError, poolName)
 		ch <- prometheus.MustNewConstMetric(e.fragments, prometheus.CounterValue, pool.Fragments, poolName)
 
